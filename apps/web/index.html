@@ -1,10 +1,346 @@
-<!DOCTYPE html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>
-<title>Adaptive UI SDK</title>
-<style>body{margin:0;font-family:sans-serif;background:#041018;color:#d7f3ff}
-header{padding:16px;background:#032034;border-bottom:1px solid #1ad1ff}
-button{background:#12d0ff;border:0;padding:10px 14px;border-radius:8px;font-weight:700}
-pre{padding:16px;white-space:pre-wrap}</style></head>
-<body><header><h1>Adaptive UI SDK</h1><p>Reusable interface runtime that adapts presentation and interaction to device, task, and context.</p></header>
-<main style='padding:16px'><button onclick='proof()'>Run proof</button><pre id='out'>idle</pre></main>
-<script>async function proof(){const r=await fetch('/proof',{method:'POST',headers:{'content-type':'application/json'},body:'{}'});document.getElementById('out').textContent=JSON.stringify(await r.json(),null,2)}</script>
-</body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#041018">
+<title>Adaptive UI SDK · T21-143</title>
+<style>
+  :root {
+    --bg: #041018;
+    --ink: #d7f6ff;
+    --muted: #7fbfd4;
+    --line: rgba(26, 209, 255, .28);
+    --cyan: #12d0ff;
+    --cyan-2: #7af0ff;
+    --pad: 16px;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    color: var(--ink);
+    background:
+      radial-gradient(900px 420px at 10% -10%, rgba(18, 208, 255, .22), transparent 55%),
+      radial-gradient(700px 380px at 100% 0%, rgba(0, 90, 140, .45), transparent 50%),
+      linear-gradient(180deg, #061824 0%, #041018 40%, #02080e 100%);
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image: linear-gradient(rgba(18, 208, 255, .05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(18, 208, 255, .05) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: radial-gradient(circle at 50% 20%, #000 20%, transparent 75%);
+  }
+  header, main { position: relative; z-index: 1; }
+  header {
+    padding: 18px var(--pad) 14px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(3, 18, 32, .72);
+    backdrop-filter: blur(8px);
+  }
+  .kicker { letter-spacing: .16em; font-size: 11px; color: var(--cyan); margin: 0 0 6px; }
+  h1 { margin: 0; font-size: 22px; line-height: 1.15; }
+  header p { margin: 6px 0 0; color: var(--muted); font-size: 13px; max-width: 62ch; }
+  .statusrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .pill {
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: var(--cyan-2);
+    background: rgba(18, 208, 255, .08);
+  }
+  .pill.bad { color: #ffb4a8; border-color: rgba(255, 120, 96, .45); background: rgba(255, 80, 60, .08); }
+  .pill.warn { color: #ffe08a; border-color: rgba(255, 200, 80, .4); }
+  main { padding: 14px var(--pad) 28px; display: grid; gap: 12px; }
+  section {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: rgba(4, 22, 36, .78);
+    padding: 14px;
+  }
+  h2 { margin: 0 0 10px; font-size: 15px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
+  input, select {
+    width: 100%;
+    min-height: 44px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: #021018;
+    color: var(--ink);
+    padding: 0 12px;
+    font-size: 16px;
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .checks { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 8px; }
+  .checks input { width: 22px; height: 22px; min-height: 22px; }
+  button {
+    min-height: 46px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--cyan);
+    color: #041018;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 0 14px;
+  }
+  button.ghost {
+    background: transparent;
+    color: var(--cyan-2);
+    border: 1px solid var(--line);
+  }
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .banner {
+    display: none;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+  .banner.show { display: block; }
+  .banner.err { background: rgba(255, 80, 60, .12); color: #ffc7be; }
+  .banner.info { background: rgba(18, 208, 255, .1); color: var(--cyan-2); }
+  .preview {
+    min-height: 120px;
+    border-radius: 12px;
+    border: 1px dashed var(--line);
+    padding: 12px;
+  }
+  .preview.comfortable { font-size: 16px; line-height: 1.55; }
+  .preview.compact { font-size: 13px; line-height: 1.25; letter-spacing: -.01em; }
+  .preview.offline { opacity: .65; filter: grayscale(.4); }
+  .chip { display: inline-block; margin: 0 6px 6px 0; padding: 4px 8px; border-radius: 999px; background: rgba(18, 208, 255, .12); font-size: 12px; }
+  pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 12px;
+    color: #b7e9f8;
+    max-height: 280px;
+    overflow: auto;
+  }
+  .empty { color: var(--muted); font-size: 13px; }
+  @media (min-width: 900px) {
+    main { grid-template-columns: 1.1fr .9fr; align-items: start; }
+    .span2 { grid-column: 1 / -1; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <p class="kicker">T21-143 · ADAPTIVE UI SDK</p>
+  <h1>Interface runtime</h1>
+  <p>Resolves device profile, records latency, and switches density from the local engine. Every control calls the running API.</p>
+  <div class="statusrow">
+    <span class="pill" id="healthPill">health: …</span>
+    <span class="pill" id="chainPill">chain: …</span>
+    <span class="pill" id="netPill">link: …</span>
+  </div>
+</header>
+<main>
+  <section>
+    <div id="banner" class="banner" role="status"></div>
+    <h2>Resolve</h2>
+    <label for="session">Session</label>
+    <input id="session" value="s-live" autocomplete="off">
+    <div class="row">
+      <div>
+        <label for="device">Device</label>
+        <select id="device">
+          <option value="phone">phone</option>
+          <option value="tablet">tablet</option>
+          <option value="desktop">desktop</option>
+        </select>
+      </div>
+      <div>
+        <label for="width">Width px</label>
+        <input id="width" type="number" min="0" max="8000" value="390">
+      </div>
+    </div>
+    <label for="task">Task</label>
+    <input id="task" value="compose" autocomplete="off">
+    <div class="checks">
+      <input id="online" type="checkbox" checked>
+      <label for="online" style="margin:0">Context online</label>
+    </div>
+    <div class="actions">
+      <button type="button" id="resolveBtn">Resolve</button>
+      <button type="button" class="ghost" id="useViewport">Use this screen</button>
+    </div>
+    <h2 style="margin-top:16px">Observe</h2>
+    <label for="latency">Latency ms</label>
+    <input id="latency" type="number" min="0" max="60000" value="40">
+    <div class="actions">
+      <button type="button" id="observeBtn">Record observation</button>
+      <button type="button" class="ghost" id="slowBtn">Record 300 ms</button>
+    </div>
+    <div class="actions">
+      <button type="button" id="adaptBtn">Adapt</button>
+      <button type="button" class="ghost" id="proofBtn">Run proof</button>
+    </div>
+  </section>
+  <section>
+    <h2>Adapted surface</h2>
+    <div id="preview" class="preview comfortable">
+      <div class="empty" id="previewEmpty">No resolve yet. Resolve a session to preview profile and density.</div>
+      <div id="previewBody" hidden>
+        <div id="chips"></div>
+        <p id="previewCopy">Compose surface. Density follows the last adapt for this session.</p>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="ghost" id="refreshBtn">Refresh ledger</button>
+      <button type="button" class="ghost" id="retryBtn">Retry health</button>
+    </div>
+  </section>
+  <section class="span2">
+    <h2>Evidence</h2>
+    <p class="empty" id="emptyLedger">Ledger empty.</p>
+    <pre id="out" hidden></pre>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const banner = $("banner");
+let lastProfile = null;
+let lastDensity = "comfortable";
+
+function setBanner(kind, text) {
+  banner.className = "banner show " + kind;
+  banner.textContent = text;
+}
+function clearBanner() {
+  banner.className = "banner";
+  banner.textContent = "";
+}
+function payload() {
+  return {
+    session: $("session").value.trim(),
+    device: $("device").value,
+    width: Number($("width").value),
+    task: $("task").value.trim(),
+    online: $("online").checked,
+    latency_ms: Number($("latency").value)
+  };
+}
+function paintPreview(profile, density, task) {
+  lastProfile = profile;
+  lastDensity = density || lastDensity;
+  $("previewEmpty").hidden = true;
+  $("previewBody").hidden = false;
+  $("preview").className = "preview " + lastDensity + (profile === "offline" ? " offline" : "");
+  $("chips").innerHTML = [
+    "profile " + (profile || "—"),
+    "density " + lastDensity,
+    "task " + (task || "—")
+  ].map((t) => '<span class="chip">' + t + "</span>").join("");
+}
+function showEvidence(obj) {
+  $("emptyLedger").hidden = true;
+  $("out").hidden = false;
+  $("out").textContent = JSON.stringify(obj, null, 2);
+}
+async function call(path, body) {
+  if (!navigator.onLine) {
+    $("netPill").textContent = "link: browser offline";
+    $("netPill").className = "pill bad";
+    setBanner("err", "Browser offline. Reconnect, then retry.");
+    throw new Error("offline");
+  }
+  const opt = body
+    ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }
+    : { method: "GET" };
+  const r = await fetch(path, opt);
+  const data = await r.json().catch(() => ({ error: "non-json response", status: r.status }));
+  if (!r.ok) {
+    setBanner("err", "Validation or route error: " + (data.error || r.status) + (data.fields ? " [" + data.fields.join(", ") + "]" : ""));
+    showEvidence(data);
+    throw new Error(data.error || "request failed");
+  }
+  clearBanner();
+  return data;
+}
+async function refreshHealth() {
+  try {
+    const h = await call("/health");
+    $("healthPill").textContent = h.ok ? "health: ok" : "health: degraded";
+    $("healthPill").className = h.ok ? "pill" : "pill bad";
+    const c = await call("/chain");
+    $("chainPill").textContent = "chain: " + (c.ok ? "ok" : "BROKEN") + " · " + c.count;
+    $("chainPill").className = c.ok ? "pill" : "pill bad";
+    $("netPill").textContent = navigator.onLine ? "link: up" : "link: browser offline";
+    $("netPill").className = navigator.onLine ? "pill" : "pill bad";
+  } catch (e) {
+    $("healthPill").textContent = "health: degraded";
+    $("healthPill").className = "pill bad";
+    if (e.message !== "offline") setBanner("err", "API unreachable. Start boot143.sh up on port 8765, then retry.");
+  }
+}
+async function refreshLedger() {
+  const data = await call("/events");
+  $("chainPill").textContent = "chain: " + (data.chain ? "ok" : "BROKEN") + " · " + data.count;
+  $("chainPill").className = data.chain ? "pill" : "pill bad";
+  if (!data.count) {
+    $("emptyLedger").hidden = false;
+    $("out").hidden = true;
+    return;
+  }
+  showEvidence(data);
+  const session = $("session").value.trim();
+  const mine = data.events.filter((ev) => {
+    try { return JSON.parse(ev.body).session === session; } catch (_) { return false; }
+  });
+  const resolved = [...mine].reverse().find((ev) => ev.kind === "ui.resolved");
+  const adapted = [...mine].reverse().find((ev) => ev.kind === "ui.adapted");
+  if (resolved) {
+    const b = JSON.parse(resolved.body);
+    paintPreview(b.profile, adapted ? JSON.parse(adapted.body).density : "comfortable", b.task);
+  }
+}
+$("resolveBtn").onclick = async () => {
+  const p = payload();
+  const data = await call("/resolve", p);
+  paintPreview(data.record.body.profile, lastDensity, p.task);
+  showEvidence(data);
+  refreshHealth();
+};
+$("observeBtn").onclick = async () => {
+  const p = payload();
+  showEvidence(await call("/observe", { session: p.session, latency_ms: p.latency_ms }));
+};
+$("slowBtn").onclick = async () => {
+  $("latency").value = "300";
+  const p = payload();
+  showEvidence(await call("/observe", { session: p.session, latency_ms: 300 }));
+};
+$("adaptBtn").onclick = async () => {
+  const p = payload();
+  const data = await call("/adapt", { session: p.session });
+  paintPreview(lastProfile || "unresolved", data.record.body.density, p.task);
+  showEvidence(data);
+  refreshHealth();
+};
+$("proofBtn").onclick = async () => {
+  setBanner("info", "Proof writes session s1, two slow observations, then compact density.");
+  showEvidence(await call("/proof", {}));
+  await refreshLedger();
+};
+$("refreshBtn").onclick = () => refreshLedger().catch(() => {});
+$("retryBtn").onclick = () => refreshHealth();
+$("useViewport").onclick = () => {
+  const w = window.innerWidth;
+  $("width").value = String(w);
+  $("device").value = w < 600 ? "phone" : w < 1100 ? "tablet" : "desktop";
+};
+window.addEventListener("offline", refreshHealth);
+window.addEventListener("online", refreshHealth);
+refreshHealth();
+refreshLedger().catch(() => {});
+</script>
+</body>
+</html>
